@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+langgraph
+openai
+langfuse
+qdrant-client
+pydantic
+python-dotenv
+prometheus_client
