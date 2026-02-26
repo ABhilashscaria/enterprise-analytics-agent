@@ -72,7 +72,7 @@ pip install -r requirements.txt
 ```
 
 
-###5. Configure Environment Variables
+### 5. Configure Environment Variables
 
 Create a file named .env in the root directory of the project. Do not commit this file to Git. Add your API keys and configuration:
 ```Code snippet
@@ -89,7 +89,7 @@ LANGFUSE_PUBLIC_KEY="pk-lf-..."
 LANGFUSE_SECRET_KEY="sk-lf-..."
 ```
 
-###6. Run the Application
+### 6. Run the Application
 
 Start the FastAPI local server using Uvicorn:
 ```Bash
