@@ -75,7 +75,7 @@ pip install -r requirements.txt
 ###5. Configure Environment Variables
 
 Create a file named .env in the root directory of the project. Do not commit this file to Git. Add your API keys and configuration:
-Code snippet
+```Code snippet
 
 # LLM Configuration (Groq)
 LLM_BASE_URL="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)"
@@ -87,12 +87,12 @@ SMALL_MODEL_NAME="llama-3.1-8b-instant"
 LANGFUSE_HOST="[https://cloud.langfuse.com](https://cloud.langfuse.com)"
 LANGFUSE_PUBLIC_KEY="pk-lf-..."
 LANGFUSE_SECRET_KEY="sk-lf-..."
-
-
+```
 
 ###6. Run the Application
 
 Start the FastAPI local server using Uvicorn:
-Bash
+```Bash
 
 uvicorn app.main:app --reload
+```
