@@ -41,29 +41,29 @@ Ensure you have Python 3.10+ installed on your system.
 ### 2. Clone the Repository
 ```bash
 git clone [https://github.com/yourusername/enterprise-analytics-agent.git](https://github.com/yourusername/enterprise-analytics-agent.git)
-cd enterprise-analytics-agent'''
+cd enterprise-analytics-agent```
 
 ### 3. Set Up a Virtual Environment
 
 It is highly recommended to use a virtual environment to isolate the project dependencies.
 
 For Mac/Linux:
-'''bash
+```bash
 python3 -m venv venv
-source venv/bin/activate'''
+source venv/bin/activate```
 
 For Windows:
 
-'''bash
+```bash
 python -m venv venv
-venv\Scripts\activate'''
+venv\Scripts\activate```
 
-###4. Install Dependencies
+### 4. Install Dependencies
 
 Once your virtual environment is activated, install the required Python packages:
 
-'''bash
-pip install -r requirements.txt'''
+```bash
+pip install -r requirements.txt```
 
 
 ###5. Configure Environment Variables
