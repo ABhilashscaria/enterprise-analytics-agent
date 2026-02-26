@@ -60,14 +60,16 @@ For Windows:
 
 ```bash
 python -m venv venv
-venv\Scripts\activate```
+venv\Scripts\activate
+```
 
 ### 4. Install Dependencies
 
 Once your virtual environment is activated, install the required Python packages:
 
 ```bash
-pip install -r requirements.txt```
+pip install -r requirements.txt
+```
 
 
 ###5. Configure Environment Variables
