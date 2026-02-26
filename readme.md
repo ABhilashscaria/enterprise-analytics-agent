@@ -39,18 +39,22 @@ Built with **FastAPI** and **LangGraph**, this application features dynamic LLM 
 Ensure you have Python 3.10+ installed on your system.
 
 ### 2. Clone the Repository
+
 ```bash
 git clone [https://github.com/yourusername/enterprise-analytics-agent.git](https://github.com/yourusername/enterprise-analytics-agent.git)
-cd enterprise-analytics-agent```
+cd enterprise-analytics-agent
+```
 
 ### 3. Set Up a Virtual Environment
 
 It is highly recommended to use a virtual environment to isolate the project dependencies.
 
 For Mac/Linux:
+
 ```bash
 python3 -m venv venv
-source venv/bin/activate```
+source venv/bin/activate
+```
 
 For Windows:
 
