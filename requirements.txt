@@ -7,3 +7,5 @@ qdrant-client
 pydantic
 python-dotenv
 prometheus_client
+pydantic-settings
+langchain-groq

@@ -5,6 +5,8 @@ from openai import OpenAI
 
 from app.config import settings
 
+from langchain_groq import ChatGroq
+
 client = OpenAI(base_url = settings.llm_base_url,
                 api_key = settings.llm_api_key,)
 
@@ -33,7 +35,7 @@ def call_model(prompt: str, system_prompt: str, temperature: float = 0.1,) -> Tu
         "completion_tokens": resp.usage.total_tokens,
         "total_tokens": resp.usage.total_tokens,
         }
-    content = resp,choices[0].message.content
+    content = resp.choices[0].message.content
     return content, model_name, latency_ms , usage
                                                                                     
 

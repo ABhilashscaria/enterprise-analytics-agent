@@ -1,4 +1,4 @@
-from pydantic import Basesettings
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # LLM/vLLM
@@ -6,8 +6,8 @@ class Settings(BaseSettings):
     # change to vLLM url later 
     llm_api_key: str = "dummy"
 
-    small_model_name: str = "gpt-4o-mini"
-    large_model_name: str = "gpt-4.1"
+    small_model_name: str = "llama-3.3-70b-versatile"
+    large_model_name: str = "llama-3.1-8b-instant"
 
 
     # Langfuse
