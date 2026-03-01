@@ -1,37 +1,51 @@
-from typing import TypedDict
-
 from app.llm.client import call_model
 
+SYSTEM_PROMPT = """You are an analytics copilot with memory.
+Use the conversation history and long-term memory to respond.
+If the user's identity or preferences were mentioned earlier, remember them.
+"""
 
-class AnswerState(TypedDict, total = False):
-    query: str
-    plan: str
-    answer: str
-    metadata: dict
+def format_history(history):
+    return "\n".join(
+        f"User: {turn['user']}\nAssistant: {turn['assistant']}"
+        for turn in history
+    )
 
-
-SYSTEM_PROMPT = (
-        "You are an analytics copilot. "
-        "Explain concepts clearly to non-technical business users. "
-        "Use short paragraphs and bullet points when helpful. "
-        )
-
-def answer_agent_node(state: AnswerState) -> AnswerState:
+def answer_agent_node(state):
     query = state["query"]
-    plan = state.get("plan") or f"Answer this question: {query}"
+    plan = state.get("plan", "")
 
-    prompt = f"Plan: {plan}\n\nUser question: {query}"
-    content, model_name, latency_ms, usage = call_model(prompt = prompt, system_prompt = SYSTEM_PROMPT, temperature = 0.1,)
+    # NEW: include memory + conversation history
+    history_text = format_history(state.get("history", []))
+    memory_summary = state.get("memory_summary", "")
 
-    metadata = state.get("metadata", {})
-    metadata |= {
-            "model_name": model_name,
-            "latency_ms": latency_ms,
-            "usage": usage,
-            "anser_agent_version": "v0",
-            }
-    return{
-            **state,
-            "answer": content,
-            "metadata": metadata,
-            }
+    prompt = f"""
+Conversation history:
+{history_text}
+
+Long-term memory:
+{memory_summary}
+
+Plan:
+{plan}
+
+User:
+{query}
+
+Answer based ONLY on the above memory + history + user query.
+"""
+
+    content, model, latency, usage = call_model(prompt, SYSTEM_PROMPT)
+
+    state["answer"] = content
+
+    meta = state.get("metadata", {})
+    meta.update({
+        "model_name": model,
+        "latency_ms": latency,
+        "usage": usage,
+        "answer_agent_version": "v1-memory"
+    })
+    state["metadata"] = meta
+
+    return state
