@@ -39,37 +39,43 @@ Built with **FastAPI** and **LangGraph**, this application features dynamic LLM 
 Ensure you have Python 3.10+ installed on your system.
 
 ### 2. Clone the Repository
+
 ```bash
 git clone [https://github.com/yourusername/enterprise-analytics-agent.git](https://github.com/yourusername/enterprise-analytics-agent.git)
 cd enterprise-analytics-agent
+```
 
 ### 3. Set Up a Virtual Environment
 
 It is highly recommended to use a virtual environment to isolate the project dependencies.
 
 For Mac/Linux:
-'''bash
+
+```bash
 python3 -m venv venv
 source venv/bin/activate
+```
 
 For Windows:
 
-'''bash
+```bash
 python -m venv venv
 venv\Scripts\activate
+```
 
-###4. Install Dependencies
+### 4. Install Dependencies
 
 Once your virtual environment is activated, install the required Python packages:
 
-'''bash
+```bash
 pip install -r requirements.txt
+```
 
 
-###5. Configure Environment Variables
+### 5. Configure Environment Variables
 
 Create a file named .env in the root directory of the project. Do not commit this file to Git. Add your API keys and configuration:
-Code snippet
+```Code snippet
 
 # LLM Configuration (Groq)
 LLM_BASE_URL="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)"
@@ -81,12 +87,12 @@ SMALL_MODEL_NAME="llama-3.1-8b-instant"
 LANGFUSE_HOST="[https://cloud.langfuse.com](https://cloud.langfuse.com)"
 LANGFUSE_PUBLIC_KEY="pk-lf-..."
 LANGFUSE_SECRET_KEY="sk-lf-..."
+```
 
-
-
-###6. Run the Application
+### 6. Run the Application
 
 Start the FastAPI local server using Uvicorn:
-Bash
+```Bash
 
 uvicorn app.main:app --reload
+```
