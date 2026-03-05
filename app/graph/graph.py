@@ -20,6 +20,7 @@ class GraphState(TypedDict, total=False):
 from app.graph.nodes.planner import planner_node
 from app.graph.nodes.answer_agent import answer_agent_node
 from app.graph.nodes.memory_summarizer import memory_summarizer_node
+from app.graph.nodes.rag_agent import rag_agent_node
 
 # -----------------------------
 # BUILD THE GRAPH
@@ -29,14 +30,16 @@ builder = StateGraph(GraphState)
 
 builder.add_node("planner", planner_node)
 builder.add_node("memory_summarizer", memory_summarizer_node)
+builder.add_node("rag_agent", rag_agent_node)
 builder.add_node("answer_agent", answer_agent_node)
 
 builder.set_entry_point("planner")
 
 # Flow:
-# Planner → Memory Summarizer → Answer Agent → END
+# Planner → Memory Summarizer → rag_agent -> Answer Agent → END
 builder.add_edge("planner", "memory_summarizer")
 builder.add_edge("memory_summarizer", "answer_agent")
+builder.add_edge("rag_agent", "answer_agent")
 builder.add_edge("answer_agent", END)
 
 analytics_graph = builder.compile()

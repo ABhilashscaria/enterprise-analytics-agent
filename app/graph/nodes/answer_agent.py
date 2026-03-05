@@ -1,8 +1,9 @@
 from app.llm.client import call_model
-
-SYSTEM_PROMPT = """You are an analytics copilot with memory.
-Use the conversation history and long-term memory to respond.
-If the user's identity or preferences were mentioned earlier, remember them.
+from app.rag.retriever import retrieve_docs
+SYSTEM_PROMPT = """You are an analytics copilot with memory and retrieval.
+Use the conversation history, long-term memory, and retrieved documentation
+to answer the user's question. Prefer retrieved docs over guessing.
+If something is not supported by the docs, be honest about uncertainty.
 """
 
 def format_history(history):
@@ -10,15 +11,33 @@ def format_history(history):
         f"User: {turn['user']}\nAssistant: {turn['assistant']}"
         for turn in history
     )
+    
+def format_docs(docs):
+    if not docs:
+        return "No external documents retrieved."
+    lines = []
+    for i, d in enumerate(docs, start=1):
+        lines.append(f"[DOC {i} | score={d.get('score', 0):.2f}] {d.get('text', '')}")
+    return "\n".join(lines)
 
 def answer_agent_node(state):
     query = state["query"]
     plan = state.get("plan", "")
-
+    
+    
+    retrieved_docs = state.get("retrieved_docs", [])
+    if not retrieved_docs:
+        retrieved_docs = retrieve_docs(query)
+        state["retrieved_docs"] = retrieved_docs # Save it back to state
+       
     # NEW: include memory + conversation history
     history_text = format_history(state.get("history", []))
     memory_summary = state.get("memory_summary", "")
-
+   
+    
+    
+    docs_text = format_docs(retrieved_docs)
+    
     prompt = f"""
 Conversation history:
 {history_text}
@@ -26,13 +45,17 @@ Conversation history:
 Long-term memory:
 {memory_summary}
 
+Retrieved documentation:
+{docs_text}
+
 Plan:
 {plan}
 
 User:
 {query}
 
-Answer based ONLY on the above memory + history + user query.
+Using ONLY the information above, answer the question.
+If the answer is uncertain or not in the docs, say so explicitly.
 """
 
     content, model, latency, usage = call_model(prompt, SYSTEM_PROMPT)

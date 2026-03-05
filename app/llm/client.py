@@ -32,7 +32,7 @@ def call_model(prompt: str, system_prompt: str, temperature: float = 0.1,) -> Tu
     latency_ms = (time.time() - start) * 1000
     usage = {
         "prompt_tokens": resp.usage.prompt_tokens,
-        "completion_tokens": resp.usage.total_tokens,
+        "completion_tokens": resp.usage.completion_tokens,
         "total_tokens": resp.usage.total_tokens,
         }
     content = resp.choices[0].message.content
