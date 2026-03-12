@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     qdrant_api_key: str | None = None
     qdrant_collection: str = "analytics_docs"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    
+    
+     #RAG tuning
+    rag_top_k: int = 8
+    rag_max_context_chars: int = 4000
+    rag_min_score: float = 0.2  # drop very low-score hits
 
 
     class Config:
