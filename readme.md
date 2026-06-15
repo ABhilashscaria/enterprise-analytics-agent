@@ -74,7 +74,7 @@ pip install -r requirements.txt
 
 ### 5. Configure Environment Variables
 
-Create a file named .env in the root directory of the project. Do not commit this file to Git. Add your API keys and configuration:
+Create a file named .env in the root directory of the project. Add your API keys and configuration:
 ```Code snippet
 
 # LLM Configuration (Groq)
