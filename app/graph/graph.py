@@ -1,5 +1,6 @@
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
+from app.graph.nodes.router import router_node
 
 # -----------------------------
 # 1. DEFINE THE GRAPH STATE SCHEMA
@@ -11,6 +12,9 @@ class GraphState(TypedDict, total=False):
     history: list
     memory_summary: str
     plan: str
+    route: str
+    retrieved_docs: list
+    sql_result: str
     answer: str
     metadata: dict
 
@@ -32,14 +36,22 @@ builder.add_node("planner", planner_node)
 builder.add_node("memory_summarizer", memory_summarizer_node)
 builder.add_node("rag_agent", rag_agent_node)
 builder.add_node("answer_agent", answer_agent_node)
+builder.add_node("router", router_node)
 
 builder.set_entry_point("planner")
 
 # Flow:
 # Planner → Memory Summarizer → rag_agent -> Answer Agent → END
-builder.add_edge("planner", "memory_summarizer")
-builder.add_edge("memory_summarizer", "answer_agent")
+builder.add_edge("planner", "router")
+builder.add_conditional_edges("router", lambda state: state["route"], 
+{
+    
+    "rag": "rag_agent",
+    "sql": "answer_agent",
+    "chat": "memory_summarizer"
+})
 builder.add_edge("rag_agent", "answer_agent")
+builder.add_edge("memory_summarizer", "answer_agent")
 builder.add_edge("answer_agent", END)
 
 analytics_graph = builder.compile()
