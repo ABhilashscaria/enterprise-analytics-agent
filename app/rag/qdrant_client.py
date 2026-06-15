@@ -2,6 +2,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
 from sentence_transformers import SentenceTransformer
 from app.config import settings
+from typing import List
 
 # 1. Initialize the local embedding model
 # This will download the model to your machine the very first time it runs
@@ -31,9 +32,24 @@ def ensure_collection():
         )
     return client
 
-def embed_texts(texts: list[str]) -> list[list[float]]:
-    """Use local sentence-transformers to embed texts."""
-    # encode() returns a numpy array. We convert it to a standard Python list 
-    # of lists so Qdrant can process it properly.
-    embeddings = embedding_model.encode(texts).tolist()
-    return embeddings
+def embed_texts(texts: List[str], batch_size: int = 32) -> List[List[float]]:
+    """
+    Embeds a list of strings in small batches to prevent OOM (Out of Memory) crashes.
+    """
+    from sentence_transformers import SentenceTransformer
+    
+    # Load model (ensure this is cached/singleton in your real app)
+    model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+    
+    all_embeddings = []
+    
+    # Process in chunks of 32
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i : i + batch_size]
+        # show progress for large files
+        print(f"  Embedding batch {i//batch_size + 1}...") 
+        
+        batch_vecs = model.encode(batch, convert_to_numpy=True).tolist()
+        all_embeddings.extend(batch_vecs)
+        
+    return all_embeddings

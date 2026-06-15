@@ -1,78 +1,102 @@
-import uuid
 from typing import List, Dict, Any
 from qdrant_client.http import models as qmodels
 from app.rag.qdrant_client import ensure_collection, embed_texts
 from app.config import settings
+import math
 
 
-def ingest_chunks(chunks: List[Dict[str, Any]]):
+def _keyword_score(query: str, text: str) -> float:
     """
-    chunks: list of { "id": str, "text": str, "meta": dict }
+    Very simple keyword overlap score:
+    intersection size / query token length.
+    Not full BM25, but enough to talk about hybrid retrieval.
     """
-    client = ensure_collection()
-    vectors = embed_texts([c["text"] for c in chunks])
-
-    client.upsert(
-        collection_name=settings.qdrant_collection,
-        points=[
-            qmodels.PointStruct(
-                id=c["id"],
-                vector=v,
-                payload={
-                    "text": c["text"],
-                    **(c.get("meta") or {}),
-                },
-            )
-            for c, v in zip(chunks, vectors)
-        ],
-    )
+    q_tokens = {t.lower() for t in query.split() if len(t) > 2}
+    d_tokens = {t.lower() for t in text.split() if len(t) > 2}
+    if not q_tokens or not d_tokens:
+        return 0.0
+    inter = q_tokens & d_tokens
+    return len(inter) / len(q_tokens)
 
 
-def retrieve_docs(query: str, top_k: int = 4) -> List[Dict[str, Any]]:
+def retrieve_docs(
+    query: str,
+    top_k: int | None = None,
+    max_context_chars: int | None = None,
+) -> Dict[str, Any]:
+    """
+    Custom retriever:
+    - Vector search in Qdrant
+    - Keyword-aware reranking
+    - Drops very low-score hits
+    - Packs best chunks into a context budget
+    """
+    top_k = top_k or settings.rag_top_k
+    max_context_chars = max_context_chars or settings.rag_max_context_chars
+
     client = ensure_collection()
     query_vec = embed_texts([query])[0]
 
-    response = client.query_points(
+    search_result = client.search(
         collection_name=settings.qdrant_collection,
-        query=query_vec,  # Note: The parameter is now 'query', not 'query_vector'
-        limit=top_k,
+        query_vector=query_vec,
+        limit=top_k * 3,  # fetch more, then rerank
         with_payload=True,
     )
-    search_result = response.points
 
-    docs = []
+    scored_docs: List[Dict[str, Any]] = []
     for res in search_result:
         payload = res.payload or {}
-        docs.append(
+        text = payload.get("text", "")
+        vec_score = res.score or 0.0
+        kw_score = _keyword_score(query, text)
+        # combine scores (you can tweak weights)
+        combined = 0.7 * vec_score + 0.3 * kw_score
+
+        scored_docs.append(
             {
-                "text": payload.get("text", ""),
-                "score": res.score,
+                "text": text,
+                "vector_score": vec_score,
+                "keyword_score": kw_score,
+                "combined_score": combined,
                 "meta": {k: v for k, v in payload.items() if k != "text"},
             }
         )
-    return docs
 
-
-# Convenience helper for later ingestion
-def make_chunks_from_text(text: str, source: str = "manual", max_chars: int = 600) -> List[Dict[str, Any]]:
-    paragraphs = []
-    buf = ""
-    for line in text.splitlines():
-        if not line.strip():
-            continue
-        if len(buf) + len(line) > max_chars:
-            paragraphs.append(buf)
-            buf = line
-        else:
-            buf = (buf + " " + line).strip()
-    if buf:
-        paragraphs.append(buf)
-
-    return [
-        {
-            "id": str(uuid.uuid4()),
-            "text": para,
-            "meta": {"source": source},
-        }
-        for para in paragraphs
+    # Filter very low combined scores
+    filtered = [
+        d for d in scored_docs
+        if d["combined_score"] >= settings.rag_min_score
     ]
+
+    # Sort by combined_score descending
+    filtered.sort(key=lambda d: d["combined_score"], reverse=True)
+
+    # Deduplicate & pack into context window budget
+    seen_texts = set()
+    packed_docs: List[Dict[str, Any]] = []
+    total_chars = 0
+
+    for d in filtered:
+        t = d["text"].strip()
+        if not t or t in seen_texts:
+            continue
+        # Check budget
+        if total_chars + len(t) > max_context_chars:
+            break
+        seen_texts.add(t)
+        packed_docs.append(d)
+        total_chars += len(t)
+
+        if len(packed_docs) >= top_k:
+            break
+
+    return {
+        "docs": packed_docs,
+        "debug": {
+            "raw_hits": len(search_result),
+            "filtered_hits": len(filtered),
+            "returned_docs": len(packed_docs),
+            "total_chars": total_chars,
+        },
+    }
