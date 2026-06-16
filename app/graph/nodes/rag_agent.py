@@ -6,10 +6,10 @@ def rag_agent_node(state: dict) -> dict:
     
     
     result = retrieve_docs(
-         query,
-         top_k = None, #use config default
-         max_content_chars = None,
-         )
+        query,
+        top_k=None,
+        max_context_chars=None,
+    )
          
          
     docs = result["docs"]
@@ -29,7 +29,4 @@ def rag_agent_node(state: dict) -> dict:
         "rag_agent_version": "v1_advanced",
         })
     state["metadata"] = meta
-    
-    return state
-
     return state

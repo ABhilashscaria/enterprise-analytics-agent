@@ -1,19 +1,17 @@
 from fastapi import FastAPI
+from fastapi.responses import Response
 from pydantic import BaseModel
 
-from app.graph.graph import analytics_graph, GraphState
+from app.graph.graph import analytics_graph
+from app.observability.tracing import with_tracing
+from app.observability.metrics import record_request_metrics, REQ_LAT, TOKENS, ERRORS
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
-# ----------------------------------------------------------
-# In-memory session store (can later be moved to Redis)
-# ----------------------------------------------------------
 SESSION_STORE = {}
 
-app = FastAPI(title="Analytics Copilot with Memory")
+app = FastAPI(title="Enterprise Analytics Copilot")
 
 
-# ----------------------------------------------------------
-# Request / Response Models
-# ----------------------------------------------------------
 class ChatRequest(BaseModel):
     query: str
     session_id: str | None = None
@@ -23,59 +21,65 @@ class ChatResponse(BaseModel):
     answer: str
     model_name: str | None = None
     latency_ms: float = 0.0
+    route: str | None = None
+    generated_sql: str | None = None
+    trace_id: str | None = None
     metadata: dict = {}
 
 
-# ----------------------------------------------------------
-# Chat Endpoint (Memory Aware)
-# ----------------------------------------------------------
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     session_id = req.session_id or "default"
 
-    # Create new session memory if not exists
     if session_id not in SESSION_STORE:
         SESSION_STORE[session_id] = {
             "history": [],
-            "memory_summary": ""
+            "memory_summary": "",
         }
 
-    # Build memory-aware state
     state = {
         "query": req.query,
         "session_id": session_id,
         "history": SESSION_STORE[session_id]["history"],
         "memory_summary": SESSION_STORE[session_id]["memory_summary"],
-        "metadata": {}
+        "metadata": {},
     }
 
-    # Call LangGraph
-    result = await analytics_graph.ainvoke(state)
+    try:
+        result, trace_id, model_name, _ = await with_tracing(analytics_graph, state)
+    except Exception:
+        ERRORS.labels(stage="graph").inc()
+        raise
 
-    # -----------------------------------------------------
-    # Persist updated conversational memory
-    # -----------------------------------------------------
     SESSION_STORE[session_id]["history"].append({
         "user": req.query,
-        "assistant": result["answer"]
+        "assistant": result["answer"],
     })
 
     if "memory_summary" in result:
         SESSION_STORE[session_id]["memory_summary"] = result["memory_summary"]
 
     metadata = result.get("metadata", {})
+    usage = metadata.get("usage", {})
+    latency = metadata.get("latency_ms", 0.0)
+    record_request_metrics(model_name, latency, usage)
 
     return ChatResponse(
         answer=result.get("answer", ""),
         model_name=metadata.get("model_name"),
-        latency_ms=metadata.get("latency_ms", 0),
-        metadata=metadata
+        latency_ms=latency,
+        route=result.get("route"),
+        generated_sql=result.get("generated_sql"),
+        trace_id=trace_id,
+        metadata=metadata,
     )
 
 
-# ----------------------------------------------------------
-# Health Check
-# ----------------------------------------------------------
 @app.get("/healthz")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/metrics")
+async def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

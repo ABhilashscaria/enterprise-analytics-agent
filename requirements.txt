@@ -9,3 +9,5 @@ python-dotenv
 prometheus_client
 pydantic-settings
 langchain-groq
+sentence-transformers
+google-cloud-bigquery
