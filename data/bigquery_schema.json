@@ -1,0 +1,43 @@
+{
+  "project_id": "your-gcp-project",
+  "dataset": "analytics",
+  "tables": [
+    {
+      "name": "sessions",
+      "description": "Daily web session aggregates by device and traffic source",
+      "columns": [
+        {"name": "session_date", "type": "DATE", "description": "Date of the session"},
+        {"name": "device_type", "type": "STRING", "description": "mobile or desktop"},
+        {"name": "traffic_source", "type": "STRING", "description": "e.g. organic, paid, direct, referral"},
+        {"name": "sessions", "type": "INT64", "description": "Number of sessions"},
+        {"name": "users", "type": "INT64", "description": "Unique users"},
+        {"name": "bounced_sessions", "type": "INT64", "description": "Sessions with only one pageview"},
+        {"name": "avg_session_duration_sec", "type": "FLOAT64", "description": "Average session duration in seconds"}
+      ]
+    },
+    {
+      "name": "orders",
+      "description": "E-commerce order transactions",
+      "columns": [
+        {"name": "order_date", "type": "DATE", "description": "Date the order was placed"},
+        {"name": "order_id", "type": "STRING", "description": "Unique order identifier"},
+        {"name": "customer_id", "type": "STRING", "description": "Customer identifier"},
+        {"name": "revenue", "type": "FLOAT64", "description": "Order revenue in USD"},
+        {"name": "items_count", "type": "INT64", "description": "Number of items in the order"},
+        {"name": "channel", "type": "STRING", "description": "web, mobile_app, or store"}
+      ]
+    },
+    {
+      "name": "traffic_sources",
+      "description": "Weekly traffic source performance summary",
+      "columns": [
+        {"name": "week_start", "type": "DATE", "description": "Start date of the week"},
+        {"name": "traffic_source", "type": "STRING", "description": "Source of traffic"},
+        {"name": "sessions", "type": "INT64", "description": "Total sessions"},
+        {"name": "users", "type": "INT64", "description": "Total unique users"},
+        {"name": "conversions", "type": "INT64", "description": "Number of conversions"},
+        {"name": "conversion_rate", "type": "FLOAT64", "description": "Conversions / sessions"}
+      ]
+    }
+  ]
+}
