@@ -13,3 +13,4 @@ __pycache__/
 *.sqlite3
 gcp-credentials.json
 .agents/
+monitoring_local/
