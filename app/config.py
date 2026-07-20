@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     rag_max_context_chars: int = 4000
     rag_min_score: float = 0.2
 
+    # Redis
+    redis_url: str = "redis://localhost:6379/0"
+
     # BigQuery
     bigquery_project_id: str | None = None
     bigquery_dataset: str = "analytics"

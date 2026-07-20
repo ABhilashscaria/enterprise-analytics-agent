@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: "enterprise-analytics-agent"
+    static_configs:
+      # In Docker, Prometheus must point to the service name 'api' instead of localhost
+      - targets: ["api:8000"]

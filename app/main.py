@@ -6,9 +6,11 @@ from app.graph.graph import analytics_graph
 from app.observability.tracing import with_tracing
 from app.observability.metrics import record_request_metrics, REQ_LAT, TOKENS, ERRORS
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+import json
+import redis.asyncio as redis
+from app.config import settings
 
-SESSION_STORE = {}
-
+redis_client = redis.from_url(settings.redis_url, decode_responses=True)
 app = FastAPI(title="Enterprise Analytics Copilot")
 
 
@@ -31,8 +33,12 @@ class ChatResponse(BaseModel):
 async def chat(req: ChatRequest):
     session_id = req.session_id or "default"
 
-    if session_id not in SESSION_STORE:
-        SESSION_STORE[session_id] = {
+    # Retrieve session from Redis
+    session_data_str = await redis_client.get(session_id)
+    if session_data_str:
+        session_data = json.loads(session_data_str)
+    else:
+        session_data = {
             "history": [],
             "memory_summary": "",
         }
@@ -40,8 +46,8 @@ async def chat(req: ChatRequest):
     state = {
         "query": req.query,
         "session_id": session_id,
-        "history": SESSION_STORE[session_id]["history"],
-        "memory_summary": SESSION_STORE[session_id]["memory_summary"],
+        "history": session_data["history"],
+        "memory_summary": session_data["memory_summary"],
         "metadata": {},
     }
 
@@ -51,13 +57,16 @@ async def chat(req: ChatRequest):
         ERRORS.labels(stage="graph").inc()
         raise
 
-    SESSION_STORE[session_id]["history"].append({
+    session_data["history"].append({
         "user": req.query,
         "assistant": result["answer"],
     })
 
     if "memory_summary" in result:
-        SESSION_STORE[session_id]["memory_summary"] = result["memory_summary"]
+        session_data["memory_summary"] = result["memory_summary"]
+
+    # Save session back to Redis (expires in 24 hours)
+    await redis_client.set(session_id, json.dumps(session_data), ex=86400)
 
     metadata = result.get("metadata", {})
     usage = metadata.get("usage", {})

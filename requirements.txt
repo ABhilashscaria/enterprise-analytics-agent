@@ -11,3 +11,4 @@ pydantic-settings
 langchain-groq
 sentence-transformers
 google-cloud-bigquery
+redis
