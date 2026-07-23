@@ -1,98 +1,75 @@
-# 📊 Enterprise Analytics Agent
+# Enterprise Analytics AI Copilot
 
-![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-00a393)
-![LangGraph](https://img.shields.io/badge/LangGraph-Agentic-orange)
-![Groq](https://img.shields.io/badge/LLM-Groq%20%7C%20vLLM-black)
+A production-grade, multi-agent conversational AI system designed to intelligently query enterprise data warehouses (Google BigQuery) and vector document stores (Qdrant).
 
-An intelligent, agentic analytics copilot designed to help non-technical business users and managers query, understand, and interact with enterprise data. 
+This repository demonstrates advanced LLMOps, stateless backend architecture, and deterministic agent orchestration.
 
-Built with **FastAPI** and **LangGraph**, this application features dynamic LLM routing, comprehensive observability, and is optimized for ultra-fast inference using Groq (with drop-in support for local vLLM).
+## 🏗 System Architecture
 
-## 🏗 Architecture
+*   **Orchestration:** LangGraph (State Machine / Multi-Agent Routing)
+*   **Web Framework:** FastAPI (Async REST API)
+*   **State Management:** Redis (Distributed Session Storage)
+*   **Vector Database:** Qdrant (Semantic Document Search)
+*   **Data Warehouse:** Google BigQuery (Structured Analytics)
+*   **Observability:** Prometheus & Grafana (System Metrics), Langfuse (LLM Tracing)
+*   **Infrastructure:** Docker & Docker Compose
 
+## 🚀 Key Features
 
+*   **Dynamic Agent Routing:** Uses LangGraph to classify user intent and route queries to specialized sub-agents (`sql_agent`, `rag_agent`, `chat_agent`), heavily mitigating hallucination risks.
+*   **Stateless Scaling:** Conversational memory is completely decoupled from the application and managed in **Redis**, allowing safe horizontal scaling of the API.
+*   **Dual-Layer Observability:** 
+    *   *System Health:* Exposes a `/metrics` endpoint scraped by **Prometheus** for tracking API latency, token consumption, and error rates via **Grafana**.
+    *   *AI Cognition:* Integrates **Langfuse** to trace graph execution, model routing, and tool calls.
+*   **Containerized Environment:** Fully dockerized stack for seamless, reproducible deployments across any environment.
 
-## ✨ Key Features
+## 🛠 Quick Start (Docker)
 
-* **Agentic Orchestration:** Utilizes LangGraph for structured reasoning, tool execution, and state management.
-* **Dynamic LLM Routing:** A built-in heuristic router directs simple queries to smaller, lightning-fast models (e.g., Llama-3.1-8B) and complex analytical queries to heavy reasoning models (e.g., Llama-3.3-70B).
-* **OpenAI-Compatible Drop-In:** Connects seamlessly to Groq's API or a local vLLM server without altering core agent logic.
-* **Deep Observability:** Native integration with the Langfuse v3 SDK captures execution traces, prompt versions, and granular token usage.
-* **Real-Time Metrics:** Exposes a Prometheus `/metrics` endpoint to monitor application health, model latency, and token consumption.
-* **Vector Search Ready:** Configured to interface securely with Qdrant for Retrieval-Augmented Generation (RAG) and semantic search workflows.
+Ensure you have Docker and Docker Compose installed on your system.
 
----
+1.  **Configure Environment Variables:**
+    Ensure your `.env` file is present in the root directory with the necessary LLM API keys (Groq/OpenAI), Langfuse credentials, and BigQuery settings.
 
-## 💻 Tech Stack
+2.  **Spin up the Infrastructure:**
+    ```bash
+    docker-compose up --build -d
+    ```
+    This single command orchestrates the entire cluster:
+    *   `api`: The FastAPI application (Port 8000)
+    *   `redis`: Conversational state cache (Port 6379)
+    *   `qdrant`: Vector database (Port 6333)
+    *   `prometheus`: Metrics scraper (Port 9090)
+    *   `grafana`: Telemetry visualization (Port 3000)
 
-* **Core Framework:** FastAPI, Uvicorn, Python 3.10+
-* **AI & Orchestration:** LangGraph, LangChain Core, OpenAI Python SDK
-* **Observability:** Langfuse, Prometheus Client
-* **Data Layer:** Qdrant (Vector Database), Pydantic (Data Validation)
+3.  **Verify System Health:**
+    ```bash
+    curl http://localhost:8000/healthz
+    ```
 
----
+## 🧪 Testing the Pipeline
 
-## 🚀 Getting Started
-
-### 1. Prerequisites
-Ensure you have Python 3.10+ installed on your system.
-
-### 2. Clone the Repository
-
+**1. Send a Request:**
 ```bash
-git clone [https://github.com/yourusername/enterprise-analytics-agent.git](https://github.com/yourusername/enterprise-analytics-agent.git)
-cd enterprise-analytics-agent
+curl -X POST "http://localhost:8000/chat" \
+     -H "Content-Type: application/json" \
+     -d '{"query": "How many organic sessions did we have in May?", "session_id": "test-session-001"}'
 ```
 
-### 3. Set Up a Virtual Environment
-
-It is highly recommended to use a virtual environment to isolate the project dependencies.
-
-For Mac/Linux:
-
+**2. Verify Redis Memory:**
+Send a follow-up request using the exact same `session_id`. The API will query Redis for the historical context:
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+curl -X POST "http://localhost:8000/chat" \
+     -H "Content-Type: application/json" \
+     -d '{"query": "And what about paid sessions?", "session_id": "test-session-001"}'
 ```
 
-For Windows:
+## 📊 Viewing Telemetry
 
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
+*   **Grafana Dashboards:** Access `http://localhost:3000` (Login: `admin` / `admin`). Configure the Prometheus data source to point to the Docker internal network (`http://prometheus:9090`). You can immediately visualize metrics such as `copilot_tokens_total` and `copilot_request_latency_ms`.
+*   **Langfuse Traces:** View the exact execution graph, latency breakdowns, and raw LLM payloads in your Langfuse Cloud dashboard.
 
-### 4. Install Dependencies
+## 🔜 Ongoing Enhancements (Roadmap)
 
-Once your virtual environment is activated, install the required Python packages:
-
-```bash
-pip install -r requirements.txt
-```
-
-
-### 5. Configure Environment Variables
-
-Create a file named .env in the root directory of the project. Add your API keys and configuration:
-```Code snippet
-
-# LLM Configuration (Groq)
-LLM_BASE_URL="[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)"
-LLM_API_KEY="gsk_your_groq_api_key_here"
-LARGE_MODEL_NAME="llama-3.3-70b-versatile"
-SMALL_MODEL_NAME="llama-3.1-8b-instant"
-
-# Observability (Langfuse)
-LANGFUSE_HOST="[https://cloud.langfuse.com](https://cloud.langfuse.com)"
-LANGFUSE_PUBLIC_KEY="pk-lf-..."
-LANGFUSE_SECRET_KEY="sk-lf-..."
-```
-
-### 6. Run the Application
-
-Start the FastAPI local server using Uvicorn:
-```Bash
-
-uvicorn app.main:app --reload
-```
+*   [ ] Refactor BigQuery initialization to utilize a global connection pool for reduced latency.
+*   [ ] Upgrade LLM client to `AsyncOpenAI` for non-blocking ASGI event loops.
+*   [ ] Implement `tenacity` retry logic for graceful handling of upstream API rate limits.
