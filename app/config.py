@@ -18,11 +18,12 @@ class Settings(BaseSettings):
     qdrant_api_key: str | None = None
     qdrant_collection: str = "analytics_docs"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     # RAG tuning
     rag_top_k: int = 8
     rag_max_context_chars: int = 4000
-    rag_min_score: float = 0.2
+    rag_min_score: float = 0.0
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"

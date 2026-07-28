@@ -3,21 +3,15 @@ from qdrant_client.http import models as qmodels
 from app.rag.qdrant_client import ensure_collection, embed_texts
 from app.config import settings
 import math
+from sentence_transformers import CrossEncoder
 
+_cross_encoder = None
 
-def _keyword_score(query: str, text: str) -> float:
-    """
-    Very simple keyword overlap score:
-    intersection size / query token length.
-    Not full BM25, but enough to talk about hybrid retrieval.
-    """
-    q_tokens = {t.lower() for t in query.split() if len(t) > 2}
-    d_tokens = {t.lower() for t in text.split() if len(t) > 2}
-    if not q_tokens or not d_tokens:
-        return 0.0
-    inter = q_tokens & d_tokens
-    return len(inter) / len(q_tokens)
-
+def get_cross_encoder():
+    global _cross_encoder
+    if _cross_encoder is None:
+        _cross_encoder = CrossEncoder(settings.cross_encoder_model)
+    return _cross_encoder
 
 def retrieve_docs(
     query: str,
@@ -26,9 +20,8 @@ def retrieve_docs(
 ) -> Dict[str, Any]:
     """
     Custom retriever:
-    - Vector search in Qdrant
-    - Keyword-aware reranking
-    - Drops very low-score hits
+    - Vector search in Qdrant (high recall)
+    - Cross-Encoder reranking (high precision)
     - Packs best chunks into a context budget
     """
     top_k = top_k or settings.rag_top_k
@@ -37,6 +30,7 @@ def retrieve_docs(
     client = ensure_collection()
     query_vec = embed_texts([query])[0]
 
+    # Stage 1: High Recall Vector Search
     search_result = client.search(
         collection_name=settings.qdrant_collection,
         query_vector=query_vec,
@@ -44,28 +38,37 @@ def retrieve_docs(
         with_payload=True,
     )
 
-    scored_docs: List[Dict[str, Any]] = []
+    if not search_result:
+        return {"docs": [], "debug": {"raw_hits": 0}}
+
+    # Stage 2: Cross-Encoder Re-Ranking
+    cross_encoder = get_cross_encoder()
+    
+    docs_to_score = []
+    pairs = []
     for res in search_result:
         payload = res.payload or {}
         text = payload.get("text", "")
-        vec_score = res.score or 0.0
-        kw_score = _keyword_score(query, text)
-        # combine scores (you can tweak weights)
-        combined = 0.7 * vec_score + 0.3 * kw_score
-
-        scored_docs.append(
-            {
+        if text:
+            docs_to_score.append({
                 "text": text,
-                "vector_score": vec_score,
-                "keyword_score": kw_score,
-                "combined_score": combined,
+                "vector_score": res.score or 0.0,
                 "meta": {k: v for k, v in payload.items() if k != "text"},
-            }
-        )
+            })
+            pairs.append((query, text))
+            
+    if not pairs:
+        return {"docs": [], "debug": {"raw_hits": len(search_result)}}
 
-    # Filter very low combined scores
+    # Calculate true relevance scores
+    ce_scores = cross_encoder.predict(pairs)
+
+    for doc, score in zip(docs_to_score, ce_scores):
+        doc["combined_score"] = float(score)
+
+    # Filter very low scores (CrossEncoder outputs logits, usually > 0 is good)
     filtered = [
-        d for d in scored_docs
+        d for d in docs_to_score
         if d["combined_score"] >= settings.rag_min_score
     ]
 
